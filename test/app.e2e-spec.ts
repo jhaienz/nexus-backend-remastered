@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 
-describe('App (e2e)', () => {
+describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
@@ -13,14 +13,14 @@ describe('App (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api/v1');
     await app.init();
   });
 
-  it('GET /api/v1 returns 401 (no auth)', () => {
+  it('/ (GET)', () => {
     return request(app.getHttpServer())
-      .get('/api/v1/')
-      .expect(401);
+      .get('/')
+      .expect(200)
+      .expect('Hello World!');
   });
 
   afterEach(async () => {
