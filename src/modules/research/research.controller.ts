@@ -20,6 +20,7 @@ import { UpdateResearchDto } from './dto/update-research.dto.js';
 import { UploadUrlDto } from './dto/upload-url.dto.js';
 import { RejectResearchDto } from './dto/reject-research.dto.js';
 import { UpdatePrivacyDto } from './dto/update-privacy.dto.js';
+import type { CurrentAuthUser } from './research.service.js';
 
 @ApiTags('Research')
 @Controller('research')
@@ -82,8 +83,11 @@ export class ResearchController {
   @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Get research by ID' })
-  findById(@Param('id', ParseUUIDPipe) id: string) {
-    return this.service.findById(id);
+  findById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user?: CurrentAuthUser,
+  ) {
+    return this.service.findById(id, user);
   }
 
   @ApiBearerAuth()
@@ -142,9 +146,9 @@ export class ResearchController {
   @ApiOperation({ summary: 'Get presigned PDF download URL' })
   getPdf(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser('id') userId?: string,
+    @CurrentUser() user?: CurrentAuthUser,
   ) {
-    return this.service.getPdfUrl(id, userId);
+    return this.service.getPdfUrl(id, user);
   }
 
   @Public()

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -17,6 +18,8 @@ import { notifications } from '../../database/schema/notifications.js';
 import { StorageService } from '../storage/storage.service.js';
 import { CreateResearchDto } from './dto/create-research.dto.js';
 import { UpdateResearchDto } from './dto/update-research.dto.js';
+
+export type CurrentAuthUser = { id: string; email: string; role: string };
 
 @Injectable()
 export class ResearchService {
@@ -87,12 +90,18 @@ export class ResearchService {
     contentType: string,
   ) {
     const research = await this.assertOwnership(researchId, userId);
-    const key = `pdfs/${research.id}/${Date.now()}-${filename}`;
+    const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const key = `pdfs/${research.id}/${Date.now()}-${safeFilename}`;
     const uploadUrl = await this.storage.generateUploadUrl(key, contentType);
 
     await this.db
       .update(researches)
-      .set({ fileKey: key, fileName: filename, updatedAt: new Date() })
+      .set({
+        fileKey: key,
+        fileName: safeFilename,
+        uploadComplete: false,
+        updatedAt: new Date(),
+      })
       .where(eq(researches.id, researchId));
 
     return { uploadUrl, key };
@@ -113,7 +122,7 @@ export class ResearchService {
     return { message: 'Upload confirmed' };
   }
 
-  async findById(id: string) {
+  async findById(id: string, user?: CurrentAuthUser) {
     const research = await this.db.query.researches.findFirst({
       where: eq(researches.id, id),
       with: {
@@ -124,6 +133,12 @@ export class ResearchService {
       },
     });
     if (!research) throw new NotFoundException('Research not found');
+
+    const isOwner = user?.id === research.uploaderId;
+    const isAdmin = user?.role === 'admin';
+    if (research.status !== 'approved' && !isOwner && !isAdmin) {
+      throw new NotFoundException('Research not found');
+    }
 
     return {
       ...research,
@@ -141,7 +156,10 @@ export class ResearchService {
 
     const [data, [{ total }]] = await Promise.all([
       this.db.query.researches.findMany({
-        where: eq(researches.status, 'approved'),
+        where: and(
+          eq(researches.status, 'approved'),
+          eq(researches.uploadComplete, true),
+        ),
         with: {
           researchAuthors: { with: { author: true } },
           researchCategories: { with: { category: true } },
@@ -153,7 +171,12 @@ export class ResearchService {
       this.db
         .select({ total: count() })
         .from(researches)
-        .where(eq(researches.status, 'approved')),
+        .where(
+          and(
+            eq(researches.status, 'approved'),
+            eq(researches.uploadComplete, true),
+          ),
+        ),
     ]);
 
     return {
@@ -262,13 +285,22 @@ export class ResearchService {
   }
 
   async approve(researchId: string) {
+    const existing = await this.db.query.researches.findFirst({
+      where: eq(researches.id, researchId),
+    });
+
+    if (!existing) throw new NotFoundException('Research not found');
+    if (!existing.uploadComplete || !existing.fileKey) {
+      throw new BadRequestException(
+        'Cannot approve research without a confirmed PDF upload',
+      );
+    }
+
     const [research] = await this.db
       .update(researches)
       .set({ status: 'approved', updatedAt: new Date() })
       .where(eq(researches.id, researchId))
       .returning();
-
-    if (!research) throw new NotFoundException('Research not found');
 
     await this.db.insert(notifications).values({
       userId: research.uploaderId,
@@ -301,22 +333,23 @@ export class ResearchService {
     return research;
   }
 
-  async getPdfUrl(researchId: string, userId?: string) {
+  async getPdfUrl(researchId: string, user?: CurrentAuthUser) {
     const research = await this.db.query.researches.findFirst({
       where: eq(researches.id, researchId),
     });
 
-    if (!research || !research.fileKey)
+    if (!research || !research.fileKey || !research.uploadComplete)
       throw new NotFoundException('PDF not found');
 
-    if (research.filePrivacy === 'private') {
-      if (!userId) throw new ForbiddenException('Authentication required');
-      if (
-        userId !== research.uploaderId
-        // Admin bypass handled by controller-level guard
-      ) {
-        throw new ForbiddenException('This PDF is private');
-      }
+    const isOwner = user?.id === research.uploaderId;
+    const isAdmin = user?.role === 'admin';
+
+    if (research.status !== 'approved' && !isOwner && !isAdmin) {
+      throw new NotFoundException('PDF not found');
+    }
+
+    if (research.filePrivacy === 'private' && !isOwner && !isAdmin) {
+      throw new ForbiddenException('This PDF is private');
     }
 
     const url = await this.storage.generateDownloadUrl(research.fileKey);
@@ -327,6 +360,16 @@ export class ResearchService {
     researchId: string,
     eventType: 'view' | 'download' | 'citation',
   ) {
+    const research = await this.db.query.researches.findFirst({
+      where: and(
+        eq(researches.id, researchId),
+        eq(researches.status, 'approved'),
+        eq(researches.uploadComplete, true),
+      ),
+    });
+
+    if (!research) throw new NotFoundException('Research not found');
+
     const counterColumn =
       eventType === 'view'
         ? researches.viewCount

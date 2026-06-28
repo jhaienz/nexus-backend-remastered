@@ -16,7 +16,7 @@ All endpoints in this module are public (no token required).
 
 ### POST `/auth/register`
 
-Register a new user. Sends a verification email.
+Register a new user. Sends a 6-digit verification code via email.
 
 **Request:**
 ```json
@@ -36,7 +36,7 @@ Register a new user. Sends a verification email.
 ```json
 {
   "data": {
-    "message": "Registration successful. Check your email to verify."
+    "message": "Registration successful. Check your email for a 6-digit code."
   }
 }
 ```
@@ -46,9 +46,17 @@ Register a new user. Sends a verification email.
 
 ---
 
-### GET `/auth/verify-email?token=<jwt>`
+### POST `/auth/verify-email`
 
-Verify email address via the token sent in the registration email.
+Verify email address via the 6-digit code sent in the registration email.
+
+**Request:**
+```json
+{
+  "email": "juan.delacruz@ncf.edu.ph",
+  "code": "123456"
+}
+```
 
 **Response `200`:**
 ```json
@@ -60,7 +68,29 @@ Verify email address via the token sent in the registration email.
 ```
 
 **Errors:**
-- `400` — Invalid or expired verification token
+- `400` — Invalid or expired code
+
+---
+
+### POST `/auth/resend-verification-code`
+
+Request a new 6-digit email verification code. Returns a generic message to avoid exposing account state.
+
+**Request:**
+```json
+{
+  "email": "juan.delacruz@ncf.edu.ph"
+}
+```
+
+**Response `201`:**
+```json
+{
+  "data": {
+    "message": "If the email needs verification, a code was sent."
+  }
+}
+```
 
 ---
 

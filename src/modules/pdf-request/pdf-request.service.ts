@@ -28,6 +28,15 @@ export class PdfRequestService {
     });
 
     if (!research) throw new NotFoundException('Research not found');
+    if (research.status !== 'approved') {
+      throw new NotFoundException('Research not found');
+    }
+    if (research.filePrivacy !== 'private') {
+      throw new BadRequestException('PDF is already public');
+    }
+    if (!research.uploadComplete || !research.fileKey) {
+      throw new BadRequestException('PDF is not available yet');
+    }
 
     const [request] = await this.db
       .insert(pdfRequests)
@@ -73,7 +82,8 @@ export class PdfRequestService {
       where: eq(researches.id, request.researchId),
     });
 
-    if (!research?.fileKey) throw new BadRequestException('No PDF uploaded');
+    if (!research?.fileKey || !research.uploadComplete)
+      throw new BadRequestException('No PDF uploaded');
 
     // 24-hour download link
     const downloadUrl = await this.storage.generateDownloadUrl(

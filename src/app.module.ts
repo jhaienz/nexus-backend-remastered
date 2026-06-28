@@ -20,6 +20,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { PdfRequestModule } from './modules/pdf-request/pdf-request.module.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
+import { AppController } from './app.controller.js';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { RolesGuard } from './common/guards/roles.guard.js';
     AnalyticsModule,
     PdfRequestModule,
   ],
+  controllers: [AppController],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },

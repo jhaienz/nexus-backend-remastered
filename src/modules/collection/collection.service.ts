@@ -8,6 +8,7 @@ import { and, eq } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/drizzle.provider.js';
 import type { DrizzleDB } from '../../database/drizzle.provider.js';
 import { collections } from '../../database/schema/collections.js';
+import { researches } from '../../database/schema/researches.js';
 
 @Injectable()
 export class CollectionService {
@@ -29,6 +30,16 @@ export class CollectionService {
   }
 
   async add(userId: string, researchId: string) {
+    const research = await this.db.query.researches.findFirst({
+      where: and(
+        eq(researches.id, researchId),
+        eq(researches.status, 'approved'),
+        eq(researches.uploadComplete, true),
+      ),
+    });
+
+    if (!research) throw new NotFoundException('Research not found');
+
     try {
       await this.db.insert(collections).values({ userId, researchId });
       return { message: 'Added to collection' };

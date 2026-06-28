@@ -5,6 +5,7 @@ import type { DrizzleDB } from '../../database/drizzle.provider.js';
 import { researches } from '../../database/schema/researches.js';
 import { researchAuthors } from '../../database/schema/research-authors.js';
 import { researchCategories } from '../../database/schema/research-categories.js';
+import { researchKeywords } from '../../database/schema/research-keywords.js';
 import { authors } from '../../database/schema/authors.js';
 
 @Injectable()
@@ -22,10 +23,14 @@ export class SearchService {
     page: number;
     limit: number;
   }) {
-    const { q, category, dateFrom, dateTo, sort, page, limit } = params;
+    const { q, category, keyword, dateFrom, dateTo, sort, page, limit } =
+      params;
     const offset = (page - 1) * limit;
 
-    const conditions = [eq(researches.status, 'approved')];
+    const conditions = [
+      eq(researches.status, 'approved'),
+      eq(researches.uploadComplete, true),
+    ];
 
     if (dateFrom) conditions.push(gte(researches.publishDate, dateFrom));
     if (dateTo) conditions.push(lte(researches.publishDate, dateTo));
@@ -58,7 +63,17 @@ export class SearchService {
           eq(researchCategories.researchId, researches.id),
           eq(researchCategories.categoryId, category),
         ),
-      ) as any;
+      );
+    }
+
+    if (keyword) {
+      query = query.innerJoin(
+        researchKeywords,
+        and(
+          eq(researchKeywords.researchId, researches.id),
+          eq(researchKeywords.keywordId, keyword),
+        ),
+      );
     }
 
     if (params.author) {
@@ -68,7 +83,7 @@ export class SearchService {
           eq(researchAuthors.researchId, researches.id),
           eq(researchAuthors.authorId, params.author),
         ),
-      ) as any;
+      );
     }
 
     if (q) {
@@ -109,7 +124,17 @@ export class SearchService {
           eq(researchCategories.researchId, researches.id),
           eq(researchCategories.categoryId, category),
         ),
-      ) as any;
+      );
+    }
+
+    if (keyword) {
+      countQuery = countQuery.innerJoin(
+        researchKeywords,
+        and(
+          eq(researchKeywords.researchId, researches.id),
+          eq(researchKeywords.keywordId, keyword),
+        ),
+      );
     }
 
     if (params.author) {
@@ -119,7 +144,7 @@ export class SearchService {
           eq(researchAuthors.researchId, researches.id),
           eq(researchAuthors.authorId, params.author),
         ),
-      ) as any;
+      );
     }
 
     const [{ total }] = await (countQuery as any).where(whereClause);
@@ -145,6 +170,7 @@ export class SearchService {
       .where(
         and(
           eq(researches.status, 'approved'),
+          eq(researches.uploadComplete, true),
           sql`similarity(${researches.title}, ${q}) > 0.1`,
         ),
       )

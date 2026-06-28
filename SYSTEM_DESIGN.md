@@ -82,12 +82,12 @@ Register:
     → NestJS validates input (class-validator pipes)
     → Hashes password (bcrypt, 12 rounds)
     → Inserts user with status='unverified'
-    → Calls Resend API to send verification email with signed token
+    → Stores a 6-digit verification code and sends it via Resend
     → Returns 201
 
 Verify Email:
-  Client → GET /api/auth/verify-email?token=<jwt>
-    → NestJS verifies JWT signature
+  Client → POST /api/auth/verify-email { email, code }
+    → NestJS verifies the code has not expired
     → Updates user status to 'active'
     → Returns 200
 
@@ -358,8 +358,9 @@ All endpoints are prefixed with `/api`. Auth-required endpoints are marked with 
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| POST | `/register` | - | Register new user. Sends verification email via Resend. |
-| GET | `/verify-email` | - | Verify email via signed token in query string. |
+| POST | `/register` | - | Register new user. Sends 6-digit verification code via Resend. |
+| POST | `/verify-email` | - | Verify email via 6-digit code. |
+| POST | `/resend-verification-code` | - | Send a new 6-digit email verification code. |
 | POST | `/login` | - | Authenticate. Returns access + refresh tokens. |
 | POST | `/refresh` | - | Exchange refresh token for new access token. |
 | POST | `/forgot-password` | - | Send 6-digit reset code to email. |

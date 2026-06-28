@@ -36,7 +36,12 @@ All endpoints prefixed with `/api`. Port defaults to 3001 (configurable via `POR
 ## Key Patterns
 
 - **Type imports for DI**: `DrizzleDB` must use `import type` (required by `isolatedModules` + `emitDecoratorMetadata`). The `DRIZZLE` symbol is the runtime token
-- **Ownership checks**: Research mutations verify `uploaderId === userId` via `assertOwnership()`
+- **Response envelope**: `TransformInterceptor` wraps all responses in `{ data }`. Paginated responses return `{ data, meta: { total, page, totalPages } }` directly (skipping the extra wrap)
+- **Ownership checks**: Research mutations verify `uploaderId === userId` via private `assertOwnership()` — throws `NotFoundException` (not 403) to avoid leaking existence
+- **Current user**: Use `@CurrentUser()` decorator in controllers to extract the JWT payload; type is `JwtPayload` from `auth/strategies/jwt.strategy.ts`
+- **Drizzle query style**: Use `db.query.*` (relational API with `with:`) for reads with joins; use `db.select/insert/update` (query builder) for writes and aggregations
+- **File upload flow**: Two-step — (1) call endpoint to get presigned upload URL, (2) client uploads directly to R2, (3) client calls confirm endpoint which sets `uploadComplete: true` and `fileKey`. Backend never proxies bytes
+- **Research lifecycle**: Status is `pending → approved | rejected`. Only admins can approve/reject; uploaders can only delete their own pending/rejected research
 - **Pagination**: Shared `PaginationDto` with `page`/`limit` query params, returns `{ data, meta: { total, page, totalPages } }`
 - **Search**: PostgreSQL full-text search via `tsvector`/`plainto_tsquery` + `pg_trgm` similarity for autocomplete
 

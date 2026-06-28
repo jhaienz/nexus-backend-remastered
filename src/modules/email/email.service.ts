@@ -14,15 +14,16 @@ export class EmailService {
     this.frontendUrl = config.getOrThrow('FRONTEND_URL');
   }
 
-  async sendVerificationEmail(to: string, token: string) {
-    const url = `${this.frontendUrl}/verify-email?token=${token}`;
+  async sendVerificationEmail(to: string, code: string) {
+    const url = `${this.frontendUrl}/verify-email?email=${encodeURIComponent(to)}`;
     await this.resend.emails.send({
       from: this.from,
       to,
-      subject: 'Verify your email — NCF Research Nexus',
-      html: `<p>Click the link below to verify your email address:</p>
-             <p><a href="${url}">Verify Email</a></p>
-             <p>This link expires in 24 hours.</p>`,
+      subject: 'Email Verification Code — NCF Research Nexus',
+      html: `<p>Your email verification code is:</p>
+             <h2>${code}</h2>
+             <p>This code expires in 15 minutes.</p>
+             <p>Enter it here: <a href="${url}">${url}</a></p>`,
     });
   }
 

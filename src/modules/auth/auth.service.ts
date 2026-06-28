@@ -13,6 +13,7 @@ import { DRIZZLE } from '../../database/drizzle.provider.js';
 import type { DrizzleDB } from '../../database/drizzle.provider.js';
 import { users } from '../../database/schema/users.js';
 import { passwordResets } from '../../database/schema/password-resets.js';
+import { emailVerificationCodes } from '../../database/schema/email-verification-codes.js';
 import { EmailService } from '../email/email.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -54,38 +55,67 @@ export class AuthService {
       })
       .returning({ id: users.id, email: users.email });
 
-    const verificationToken = this.jwt.sign(
-      { sub: user.id, email: user.email, purpose: 'email-verification' },
-      {
-        secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
-        expiresIn: '24h',
-      },
-    );
+    await this.sendEmailVerificationCode(user.id, user.email);
 
-    await this.email.sendVerificationEmail(user.email, verificationToken);
-
-    return { message: 'Registration successful. Check your email to verify.' };
+    return {
+      message: 'Registration successful. Check your email for a 6-digit code.',
+    };
   }
 
-  async verifyEmail(token: string) {
-    try {
-      const payload = this.jwt.verify(token, {
-        secret: this.config.getOrThrow('JWT_ACCESS_SECRET'),
-      });
+  async verifyEmail(email: string, code: string) {
+    const [user] = await this.db
+      .select({ id: users.id, status: users.status })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
 
-      if (payload.purpose !== 'email-verification') {
-        throw new BadRequestException('Invalid token');
-      }
-
-      await this.db
-        .update(users)
-        .set({ status: 'active', updatedAt: new Date() })
-        .where(eq(users.id, payload.sub));
-
-      return { message: 'Email verified successfully' };
-    } catch {
-      throw new BadRequestException('Invalid or expired verification token');
+    if (!user) throw new BadRequestException('Invalid or expired code');
+    if (user.status === 'active') {
+      return { message: 'Email already verified' };
     }
+    if (user.status !== 'unverified') {
+      throw new BadRequestException('Invalid or expired code');
+    }
+
+    const [verification] = await this.db
+      .select()
+      .from(emailVerificationCodes)
+      .where(
+        and(
+          eq(emailVerificationCodes.userId, user.id),
+          eq(emailVerificationCodes.code, code),
+          gt(emailVerificationCodes.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+
+    if (!verification) throw new BadRequestException('Invalid or expired code');
+
+    await this.db
+      .update(users)
+      .set({ status: 'active', updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+
+    await this.db
+      .delete(emailVerificationCodes)
+      .where(eq(emailVerificationCodes.userId, user.id));
+
+    return { message: 'Email verified successfully' };
+  }
+
+  async resendVerificationCode(email: string) {
+    const [user] = await this.db
+      .select({ id: users.id, email: users.email, status: users.status })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user || user.status !== 'unverified') {
+      return { message: 'If the email needs verification, a code was sent.' };
+    }
+
+    await this.sendEmailVerificationCode(user.id, user.email);
+    return { message: 'If the email needs verification, a code was sent.' };
   }
 
   async login(dto: LoginDto) {
@@ -179,6 +209,23 @@ export class AuthService {
     await this.email.sendPasswordResetCode(email, code);
 
     return { message: 'If the email exists, a reset code has been sent.' };
+  }
+
+  private async sendEmailVerificationCode(userId: string, email: string) {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await this.db
+      .delete(emailVerificationCodes)
+      .where(eq(emailVerificationCodes.userId, userId));
+
+    await this.db.insert(emailVerificationCodes).values({
+      userId,
+      code,
+      expiresAt,
+    });
+
+    await this.email.sendVerificationEmail(email, code);
   }
 
   async verifyResetCode(email: string, code: string) {

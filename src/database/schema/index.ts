@@ -14,4 +14,5 @@ export * from './collections.js';
 export * from './notifications.js';
 export * from './pdf-requests.js';
 export * from './password-resets.js';
+export * from './email-verification-codes.js';
 export * from './relations.js';

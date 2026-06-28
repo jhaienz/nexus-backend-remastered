@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../common/decorators/public.decorator.js';
 import { AuthService } from './auth.service.js';
@@ -8,6 +8,7 @@ import { RefreshTokenDto } from './dto/refresh-token.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { VerifyEmailCodeDto } from './dto/verify-email-code.dto.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -22,10 +23,17 @@ export class AuthController {
   }
 
   @Public()
-  @Get('verify-email')
-  @ApiOperation({ summary: 'Verify email via token' })
-  verifyEmail(@Query('token') token: string) {
-    return this.authService.verifyEmail(token);
+  @Post('verify-email')
+  @ApiOperation({ summary: 'Verify email via 6-digit code' })
+  verifyEmail(@Body() dto: VerifyEmailCodeDto) {
+    return this.authService.verifyEmail(dto.email, dto.code);
+  }
+
+  @Public()
+  @Post('resend-verification-code')
+  @ApiOperation({ summary: 'Resend email verification code' })
+  resendVerificationCode(@Body() dto: ForgotPasswordDto) {
+    return this.authService.resendVerificationCode(dto.email);
   }
 
   @Public()
