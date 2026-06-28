@@ -1,7 +1,8 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Patch, Post } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../../common/decorators/public.decorator.js';
+import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
 import { AuthService } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -10,6 +11,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { VerifyResetCodeDto } from './dto/verify-reset-code.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { VerifyEmailCodeDto } from './dto/verify-email-code.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -71,5 +73,15 @@ export class AuthController {
   @ApiOperation({ summary: 'Set new password with reset token' })
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.newPassword);
+  }
+
+  @ApiBearerAuth()
+  @Patch('change-password')
+  @ApiOperation({ summary: 'Change password for logged-in user' })
+  changePassword(
+    @CurrentUser('id') userId: string,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(userId, dto.currentPassword, dto.newPassword);
   }
 }

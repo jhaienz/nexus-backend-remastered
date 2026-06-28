@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -286,5 +287,26 @@ export class AuthService {
     } catch {
       throw new BadRequestException('Invalid or expired reset token');
     }
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(users.id, userId),
+    });
+
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.passwordHash) throw new BadRequestException('Account has no password set');
+
+    const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!matches) throw new BadRequestException('Current password is incorrect');
+
+    const hash = await bcrypt.hash(newPassword, 10);
+
+    await this.db
+      .update(users)
+      .set({ passwordHash: hash, updatedAt: new Date() })
+      .where(eq(users.id, userId));
+
+    return { message: 'Password changed successfully' };
   }
 }
