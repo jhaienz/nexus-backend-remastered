@@ -15,6 +15,7 @@ Deploy `BACKEND/` as its own Node service. The app listens on `PORT` and exposes
 - Connect the backend repository.
 - Railway can use the included `railway.json` and `nixpacks.toml`.
 - The backend deploy is forced to npm with `npm ci`, not pnpm.
+- Nixpacks runs `npm ci` in the install phase and `npm run build` in the build phase.
 - Add a PostgreSQL service or external Postgres URL, then set `DATABASE_URL`.
 
 ## Required Environment Variables
