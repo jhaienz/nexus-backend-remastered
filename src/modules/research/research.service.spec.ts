@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ResearchService } from './research.service';
 import { EmailService } from '../email/email.service';
+import { AuditService } from '../audit/audit.service';
 
 const makeUpdateQuery = (returningValue?: unknown) => ({
   set: jest.fn().mockReturnThis(),
@@ -41,6 +42,10 @@ const mockConfigService = {
   get: jest.fn().mockReturnValue('admin@test.com'),
 };
 
+const mockAuditService = {
+  log: jest.fn().mockResolvedValue(undefined),
+};
+
 describe('ResearchService', () => {
   const storage = {
     generateUploadUrl: jest.fn(),
@@ -55,6 +60,7 @@ describe('ResearchService', () => {
       storage as never,
       mockEmailService as unknown as EmailService,
       mockConfigService as never,
+      mockAuditService as unknown as AuditService,
     );
 
   beforeEach(() => {

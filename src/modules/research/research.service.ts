@@ -356,7 +356,9 @@ export class ResearchService {
     }
 
     await this.db.delete(researches).where(eq(researches.id, researchId));
-    await this.audit.log(adminId ?? userId, 'delete', researchId);
+    if (adminId) {
+      await this.audit.log(adminId, 'delete', researchId);
+    }
     return { message: 'Research deleted' };
   }
 
