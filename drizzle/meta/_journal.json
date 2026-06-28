@@ -22,6 +22,13 @@
       "when": 1782665856048,
       "tag": "0002_simple_eternity",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782666049356,
+      "tag": "0003_sticky_quasar",
+      "breakpoints": true
     }
   ]
 }

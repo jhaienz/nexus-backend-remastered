@@ -4,9 +4,7 @@ import { researches } from './researches.js';
 
 export const auditLogs = pgTable('audit_logs', {
   id: uuid('id').primaryKey().defaultRandom(),
-  adminId: uuid('admin_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'set null' }),
+  adminId: uuid('admin_id').references(() => users.id, { onDelete: 'set null' }),
   researchId: uuid('research_id').references(() => researches.id, {
     onDelete: 'set null',
   }),
