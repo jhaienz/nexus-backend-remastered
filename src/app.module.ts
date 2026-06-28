@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { CacheModule } from '@nestjs/cache-manager';
 import { validate } from './config/index.js';
 import { DatabaseModule } from './database/database.module.js';
 import { StorageModule } from './modules/storage/storage.module.js';
@@ -31,7 +32,12 @@ import { AppController } from './app.controller.js';
       isGlobal: true,
       validate,
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
+    ThrottlerModule.forRoot([
+      // Default: authenticated dashboard/API use
+      { name: 'default', ttl: 60_000, limit: 100 },
+    ]),
+    // In-memory cache — no Redis needed for single Railway instance (5 min default TTL)
+    CacheModule.register({ isGlobal: true, ttl: 300_000 }),
     DatabaseModule,
     StorageModule,
     EmailModule,

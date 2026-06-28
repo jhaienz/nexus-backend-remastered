@@ -4,23 +4,40 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/drizzle.provider.js';
 import type { DrizzleDB } from '../../database/drizzle.provider.js';
 import { keywords } from '../../database/schema/keywords.js';
 import { CreateKeywordDto } from './dto/create-keyword.dto.js';
 
+const CACHE_KEY = 'keywords:all';
+
 @Injectable()
 export class KeywordService {
-  constructor(@Inject(DRIZZLE) private db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private db: DrizzleDB,
+    @Inject(CACHE_MANAGER) private cache: Cache,
+  ) {}
 
   async findAll() {
-    return this.db.select().from(keywords).orderBy(keywords.name);
+    const cached = await this.cache.get<object[]>(CACHE_KEY);
+    if (cached) return cached;
+
+    const result = await this.db.select().from(keywords).orderBy(keywords.name);
+    await this.cache.set(CACHE_KEY, result);
+    return result;
+  }
+
+  private invalidate() {
+    return this.cache.del(CACHE_KEY);
   }
 
   async create(dto: CreateKeywordDto) {
     try {
       const [kw] = await this.db.insert(keywords).values(dto).returning();
+      await this.invalidate();
       return kw;
     } catch (e: any) {
       if (e.code === '23505')
@@ -36,6 +53,7 @@ export class KeywordService {
       .where(eq(keywords.id, id))
       .returning();
     if (!updated) throw new NotFoundException('Keyword not found');
+    await this.invalidate();
     return updated;
   }
 
@@ -45,6 +63,7 @@ export class KeywordService {
       .where(eq(keywords.id, id))
       .returning({ id: keywords.id });
     if (!deleted) throw new NotFoundException('Keyword not found');
+    await this.invalidate();
     return { message: 'Keyword deleted' };
   }
 }

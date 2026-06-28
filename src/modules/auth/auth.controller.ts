@@ -15,6 +15,7 @@ import { ChangePasswordDto } from './dto/change-password.dto.js';
 
 @ApiTags('Auth')
 @Controller('auth')
+// Default auth limit: 10/min per IP (login, register, refresh)
 @Throttle({ default: { ttl: 60_000, limit: 10 } })
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -33,7 +34,9 @@ export class AuthController {
     return this.authService.verifyEmail(dto.email, dto.code);
   }
 
+  // Email-sending endpoint: 3 per 15 min to prevent abuse
   @Public()
+  @Throttle({ default: { ttl: 900_000, limit: 3 } })
   @Post('resend-verification-code')
   @ApiOperation({ summary: 'Resend email verification code' })
   resendVerificationCode(@Body() dto: ForgotPasswordDto) {
@@ -54,7 +57,9 @@ export class AuthController {
     return this.authService.refreshToken(dto.refreshToken);
   }
 
+  // Email-sending endpoint: 3 per 15 min to prevent abuse
   @Public()
+  @Throttle({ default: { ttl: 900_000, limit: 3 } })
   @Post('forgot-password')
   @ApiOperation({ summary: 'Request password reset code' })
   forgotPassword(@Body() dto: ForgotPasswordDto) {

@@ -1,12 +1,15 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Roles } from '../../common/decorators/roles.decorator.js';
 import { AiRequestDto } from './dto/ai-request.dto.js';
 import { GeminiService } from './gemini.service.js';
 
+// Gemini free tier: 15 RPM — stay at 10 to leave headroom
 @ApiTags('AI')
 @ApiBearerAuth()
 @Roles('admin')
+@Throttle({ default: { ttl: 60_000, limit: 10 } })
 @Controller('ai')
 export class GeminiController {
   constructor(private service: GeminiService) {}

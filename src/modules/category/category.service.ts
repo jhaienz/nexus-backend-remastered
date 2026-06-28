@@ -4,6 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { eq, count, and } from 'drizzle-orm';
 import { DRIZZLE } from '../../database/drizzle.provider.js';
 import type { DrizzleDB } from '../../database/drizzle.provider.js';
@@ -12,11 +14,19 @@ import { researchCategories } from '../../database/schema/research-categories.js
 import { researches } from '../../database/schema/researches.js';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 
+const CACHE_KEY = 'categories:all';
+
 @Injectable()
 export class CategoryService {
-  constructor(@Inject(DRIZZLE) private db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private db: DrizzleDB,
+    @Inject(CACHE_MANAGER) private cache: Cache,
+  ) {}
 
   async findAll() {
+    const cached = await this.cache.get<object[]>(CACHE_KEY);
+    if (cached) return cached;
+
     const result = await this.db
       .select({
         id: categories.id,
@@ -31,7 +41,12 @@ export class CategoryService {
       .groupBy(categories.id)
       .orderBy(categories.name);
 
+    await this.cache.set(CACHE_KEY, result);
     return result;
+  }
+
+  private invalidate() {
+    return this.cache.del(CACHE_KEY);
   }
 
   async findByIdWithResearches(id: string, page: number, limit: number) {
@@ -75,6 +90,7 @@ export class CategoryService {
   async create(dto: CreateCategoryDto) {
     try {
       const [cat] = await this.db.insert(categories).values(dto).returning();
+      await this.invalidate();
       return cat;
     } catch (e: any) {
       if (e.code === '23505')
@@ -90,6 +106,7 @@ export class CategoryService {
       .where(eq(categories.id, id))
       .returning();
     if (!updated) throw new NotFoundException('Category not found');
+    await this.invalidate();
     return updated;
   }
 
@@ -99,6 +116,7 @@ export class CategoryService {
       .where(eq(categories.id, id))
       .returning({ id: categories.id });
     if (!deleted) throw new NotFoundException('Category not found');
+    await this.invalidate();
     return { message: 'Category deleted' };
   }
 }

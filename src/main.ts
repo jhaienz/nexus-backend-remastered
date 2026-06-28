@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import compression from 'compression';
 import { AppModule } from './app.module.js';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter.js';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor.js';
@@ -20,7 +21,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
-  app.use(helmet());
+  app.use(compression());
+  app.use(
+    helmet({
+      // Allow Swagger UI inline scripts
+      contentSecurityPolicy: process.env.NODE_ENV === 'production',
+    }),
+  );
+
   const allowedOrigins = getAllowedOrigins();
   app.enableCors({
     origin(origin, callback) {
@@ -28,7 +36,6 @@ async function bootstrap() {
         callback(null, true);
         return;
       }
-
       callback(new Error(`Origin ${origin} is not allowed by CORS`));
     },
     credentials: true,
