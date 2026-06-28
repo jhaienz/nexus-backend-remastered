@@ -12,7 +12,9 @@ export const drizzleProvider: Provider = {
   provide: DRIZZLE,
   inject: [ConfigService],
   useFactory: (config: ConfigService) => {
-    const client = postgres(config.getOrThrow<string>('DATABASE_URL'));
+    const client = postgres(config.getOrThrow<string>('DATABASE_URL'), {
+      ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
+    });
     return drizzle(client, { schema });
   },
 };
