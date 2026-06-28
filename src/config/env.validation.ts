@@ -16,6 +16,7 @@ export const envSchema = z.object({
   EMAIL_FROM: z.string().email(),
 
   FRONTEND_URL: z.string().url(),
+  FRONTEND_URLS: z.string().optional(),
   PORT: z.coerce.number().default(3001),
 });
 

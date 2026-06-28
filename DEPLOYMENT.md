@@ -31,8 +31,10 @@ Deploy `BACKEND/` as its own Node service. The app listens on `PORT` and exposes
 - `RESEND_API_KEY`: starts with `re_`.
 - `EMAIL_FROM`: verified sender email in Resend.
 - `FRONTEND_URL`: deployed frontend origin, for example `https://your-app.vercel.app`.
+- `FRONTEND_URLS`: optional comma-separated extra frontend origins, for example Vercel preview domains.
 
 Do not include `/api` in `FRONTEND_URL`.
+Do not include paths or trailing slashes in `FRONTEND_URL` or `FRONTEND_URLS`.
 
 ## After Deploy
 
