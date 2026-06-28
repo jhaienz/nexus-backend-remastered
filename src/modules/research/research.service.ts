@@ -278,7 +278,7 @@ export class ResearchService {
         authors: r.researchAuthors.map((ra) => ra.author),
         researchAuthors: undefined,
       })),
-      meta: { total, page, totalPages: Math.ceil(total / limit) },
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
     };
   }
 
