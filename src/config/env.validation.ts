@@ -19,6 +19,8 @@ export const envSchema = z.object({
   FRONTEND_URL: z.string().url(),
   FRONTEND_URLS: z.string().optional(),
   PORT: z.coerce.number().default(3001),
+
+  GEMINI_API_KEY: z.string().min(1),
 });
 
 export type Env = z.infer<typeof envSchema>;

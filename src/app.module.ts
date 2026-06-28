@@ -20,6 +20,7 @@ import { NotificationModule } from './modules/notification/notification.module.j
 import { AnalyticsModule } from './modules/analytics/analytics.module.js';
 import { PdfRequestModule } from './modules/pdf-request/pdf-request.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
+import { GeminiModule } from './modules/gemini/gemini.module.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { RolesGuard } from './common/guards/roles.guard.js';
 import { AppController } from './app.controller.js';
@@ -48,6 +49,7 @@ import { AppController } from './app.controller.js';
     AnalyticsModule,
     PdfRequestModule,
     AuditModule,
+    GeminiModule,
   ],
   controllers: [AppController],
   providers: [
