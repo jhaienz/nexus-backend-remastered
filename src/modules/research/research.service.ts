@@ -481,18 +481,17 @@ export class ResearchService {
 
     if (!research) throw new NotFoundException('Research not found');
 
-    const counterColumn =
-      eventType === 'view'
-        ? researches.viewCount
-        : eventType === 'download'
-          ? researches.downloadCount
-          : researches.citationCount;
+    const increment = {
+      view: { viewCount: sql`${researches.viewCount} + 1` },
+      download: { downloadCount: sql`${researches.downloadCount} + 1` },
+      citation: { citationCount: sql`${researches.citationCount} + 1` },
+    } as const;
 
     await Promise.all([
       this.db.insert(analyticsEvents).values({ researchId, eventType }),
       this.db
         .update(researches)
-        .set({ [counterColumn.name]: sql`${counterColumn} + 1` })
+        .set(increment[eventType])
         .where(eq(researches.id, researchId)),
     ]);
 

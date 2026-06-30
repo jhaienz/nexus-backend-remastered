@@ -9,6 +9,7 @@ import { DRIZZLE } from '../../database/drizzle.provider.js';
 import type { DrizzleDB } from '../../database/drizzle.provider.js';
 import { pdfRequests } from '../../database/schema/pdf-requests.js';
 import { researches } from '../../database/schema/researches.js';
+import { notifications } from '../../database/schema/notifications.js';
 import { StorageService } from '../storage/storage.service.js';
 import { EmailService } from '../email/email.service.js';
 import { CreatePdfRequestDto } from './dto/create-pdf-request.dto.js';
@@ -31,9 +32,6 @@ export class PdfRequestService {
     if (research.status !== 'approved') {
       throw new NotFoundException('Research not found');
     }
-    if (research.filePrivacy !== 'private') {
-      throw new BadRequestException('PDF is already public');
-    }
     if (!research.uploadComplete || !research.fileKey) {
       throw new BadRequestException('PDF is not available yet');
     }
@@ -48,14 +46,21 @@ export class PdfRequestService {
       })
       .returning();
 
-    // Notify the uploader
-    if (research.uploader?.email) {
-      await this.email.sendPdfRequestNotification(
-        research.uploader.email,
-        dto.name,
-        research.title,
-      );
-    }
+    // Email + in-app notification to uploader
+    await Promise.all([
+      research.uploader?.email
+        ? this.email.sendPdfRequestNotification(
+            research.uploader.email,
+            dto.name,
+            research.title,
+          )
+        : Promise.resolve(),
+      this.db.insert(notifications).values({
+        userId: research.uploaderId,
+        researchId: dto.researchId,
+        message: `${dto.name} has requested access to your paper "${research.title}".`,
+      }),
+    ]);
 
     return request;
   }
